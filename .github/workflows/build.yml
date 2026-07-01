@@ -5,6 +5,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -21,7 +24,6 @@ jobs:
           wget -q https://services.gradle.org/distributions/gradle-8.6-bin.zip -O /tmp/gradle.zip
           sudo unzip -q /tmp/gradle.zip -d /opt/
           sudo ln -sf /opt/gradle-8.6/bin/gradle /usr/local/bin/gradle
-          gradle --version
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
@@ -30,35 +32,39 @@ jobs:
         run: yes | sdkmanager --licenses 2>/dev/null || true
 
       - name: Build Release APK
-        run: gradle assembleRelease --no-daemon -Dorg.gradle.jvmargs="-Xmx4g" -Dandroid.overrideVersionCheck=true
-        env:
-          ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
+        run: gradle assembleRelease --no-daemon -Dorg.gradle.jvmargs="-Xmx4g"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: CloudVNC-APK
           path: app/build/outputs/apk/release/*.apk
-          retention-days: 30
+          retention-days: 90
 
-      - name: Create Release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         if: success()
         with:
-          tag_name: v${{ github.run_number }}
-          name: "Cloud VNC v${{ github.run_number }}"
+          tag_name: build-${{ github.run_number }}
+          name: "Cloud VNC - Build ${{ github.run_number }}"
           body: |
-            ## ☁ Cloud VNC - Fast Android VNC with Touch
-            ### كيفية الاستخدام:
-            1. حمّل الـ APK وثبّته
-            2. شغّل android-cloud من GitHub Actions
-            3. انسخ عنوان bore.pub:PORT
-            4. أدخله في التطبيق واضغط اتصال
-            ### المميزات:
-            - لمس سريع (tap, drag, pinch-zoom)
-            - ضغط طويل = كليك يمين
-            - تاريخ الاتصالات
-            - وضع ملء الشاشة
+            ## ☁ Cloud VNC APK
+            ### التثبيت:
+            حمّل الـ APK → Settings → Allow unknown sources → ثبّت
+
+            ### الاتصال:
+            1. شغّل `android-cloud` من [هنا](https://github.com/jassermalo/android-cloud/actions)
+            2. انتظر ظهور `bore.pub:XXXXX` في الـ logs
+            3. أدخله في التطبيق
+
+            ### التحكم باللمس:
+            | اللمس | الفعل |
+            |---|---|
+            | نقرة واحدة | كليك يسار |
+            | سحب | تحريك المؤشر |
+            | ضغط طويل | كليك يمين |
+            | أصبعين | تحريك الشاشة |
+            | قرصة | تكبير/تصغير |
           files: app/build/outputs/apk/release/*.apk
           draft: false
           prerelease: false
