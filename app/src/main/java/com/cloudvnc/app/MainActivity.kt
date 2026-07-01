@@ -10,27 +10,43 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.cloudvnc.app.databinding.ActivityMainBinding
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.textfield.TextInputLayout
 import org.json.JSONArray
 import org.json.JSONObject
 
 class MainActivity : AppCompatActivity() {
-    private lateinit var b: ActivityMainBinding
     private val PREFS = "vnc_prefs"
     private val KEY_HISTORY = "history"
 
+    private lateinit var etHost: TextInputEditText
+    private lateinit var etPort: TextInputEditText
+    private lateinit var etPassword: TextInputEditText
+    private lateinit var tilHost: TextInputLayout
+    private lateinit var rvHistory: RecyclerView
+    private lateinit var btnConnect: MaterialButton
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        b = ActivityMainBinding.inflate(layoutInflater)
-        setContentView(b.root)
+        setContentView(R.layout.activity_main)
+
+        etHost = findViewById(R.id.etHost)
+        etPort = findViewById(R.id.etPort)
+        etPassword = findViewById(R.id.etPassword)
+        tilHost = findViewById(R.id.tilHost)
+        rvHistory = findViewById(R.id.rvHistory)
+        btnConnect = findViewById(R.id.btnConnect)
+
         loadLastSession()
         setupHistory()
-        b.btnConnect.setOnClickListener {
-            val host = b.etHost.text.toString().trim()
-            val port = b.etPort.text.toString().toIntOrNull() ?: 5900
-            val pass = b.etPassword.text.toString()
-            if (host.isEmpty()) { b.tilHost.error = "أدخل العنوان"; return@setOnClickListener }
-            b.tilHost.error = null
+
+        btnConnect.setOnClickListener {
+            val host = etHost.text.toString().trim()
+            val port = etPort.text.toString().toIntOrNull() ?: 5900
+            val pass = etPassword.text.toString()
+            if (host.isEmpty()) { tilHost.error = "أدخل العنوان"; return@setOnClickListener }
+            tilHost.error = null
             saveToHistory(host, port, pass)
             startVnc(host, port, pass)
         }
@@ -48,16 +64,16 @@ class MainActivity : AppCompatActivity() {
         val arr = JSONArray(history)
         if (arr.length() == 0) return
         val last = arr.getJSONObject(0)
-        b.etHost.setText(last.optString("host"))
-        b.etPort.setText(last.optInt("port", 5900).toString())
+        etHost.setText(last.optString("host"))
+        etPort.setText(last.optInt("port", 5900).toString())
     }
 
     private fun setupHistory() {
-        b.rvHistory.layoutManager = LinearLayoutManager(this)
-        b.rvHistory.adapter = HistoryAdapter(getHistory()) { host, port, pass ->
-            b.etHost.setText(host)
-            b.etPort.setText(port.toString())
-            b.etPassword.setText(pass)
+        rvHistory.layoutManager = LinearLayoutManager(this)
+        rvHistory.adapter = HistoryAdapter(getHistory()) { host, port, pass ->
+            etHost.setText(host)
+            etPort.setText(port.toString())
+            etPassword.setText(pass)
             startVnc(host, port, pass)
         }
     }
@@ -88,27 +104,19 @@ class HistoryAdapter(
     private val items: List<Triple<String, Int, String>>,
     private val onClick: (String, Int, String) -> Unit
 ) : RecyclerView.Adapter<HistoryAdapter.VH>() {
-
     class VH(v: View) : RecyclerView.ViewHolder(v) {
         val tvHost: TextView = v.findViewById(android.R.id.text1)
         val tvPort: TextView = v.findViewById(android.R.id.text2)
     }
-
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
-        val v = LayoutInflater.from(parent.context)
-            .inflate(android.R.layout.simple_list_item_2, parent, false)
-        v.setBackgroundResource(android.R.drawable.list_selector_background)
+        val v = LayoutInflater.from(parent.context).inflate(android.R.layout.simple_list_item_2, parent, false)
         return VH(v)
     }
-
     override fun onBindViewHolder(h: VH, pos: Int) {
-        val (host, port, pass) = items[pos]
-        h.tvHost.text = host
-        h.tvHost.setTextColor(0xFFFFFFFF.toInt())
-        h.tvPort.text = "Port: $port"
-        h.tvPort.setTextColor(0xFF00D4FF.toInt())
-        h.itemView.setOnClickListener { onClick(host, port, pass) }
+        val (host, port, _) = items[pos]
+        h.tvHost.text = host; h.tvHost.setTextColor(0xFFFFFFFF.toInt())
+        h.tvPort.text = "Port: $port"; h.tvPort.setTextColor(0xFF00D4FF.toInt())
+        h.itemView.setOnClickListener { val (ho, po, pa) = items[pos]; onClick(ho, po, pa) }
     }
-
     override fun getItemCount() = items.size
 }
